@@ -80,16 +80,17 @@ export const App = () => {
             setImages(response.data.hits);
             setShowLoadMore(response.data.totalHits > perPage ? true : false);
           }, 200);
-        } else {
-          const newImages = response.data.hits;
-          setImages([...images, ...newImages]);
-          setIsLoading(false);
-          setShowLoadMore(newImages.length < perPage ? false : true);
         }
+      } else {
+        const newImages = [...images, ...response.data.hits];
+        setImages(newImages);
+        setIsLoading(false);
+        setShowLoadMore(newImages.length < perPage ? false : true);
       }
     };
 
     fetchData(query, page);
+    // eslint-disable-next-line
   }, [query, page]);
 
   return (
