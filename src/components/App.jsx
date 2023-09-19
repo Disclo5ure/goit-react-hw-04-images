@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Notify } from 'notiflix/build/notiflix-notify-aio';
 import { ImageGallery } from './ImageGallery';
@@ -11,114 +11,100 @@ const BASE_URL = 'https://pixabay.com/api/';
 const KEY = '39010846-94b79845e5a284c0e487aa25e';
 const perPage = 12;
 
-export class App extends React.Component {
-  state = {
-    page: 1,
-    images: [],
-    isLoading: false,
-    totalHits: 0,
-    query: '',
-    showLoadMore: false,
-    modalIsHidden: true,
-    modalImage: '',
-  };
+export const App = () => {
+  const [page, setPage] = useState(1);
+  const [images, setImages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [query, setQuery] = useState('');
+  const [showLoadMore, setShowLoadMore] = useState(false);
+  const [modalIsHidden, setModalIsHidden] = useState(true);
+  const [modalImage, setModalImage] = useState('');
 
-  async handleSubmit(e) {
+  const handleSubmit = e => {
     e.preventDefault();
     const query = e.currentTarget.query.value;
-    this.setState({ query: query, isLoading: true, page: 1 });
-  }
+    setQuery(query);
+    setIsLoading(true);
+    setPage(1);
+  };
 
-  async fetchData(query, page) {
-    return await axios.get(`${BASE_URL}`, {
-      params: {
-        key: KEY,
-        q: query,
-        imageType: 'photo',
-        orientation: 'horizontal',
-        page: page,
-        per_page: perPage,
-      },
-    });
-  }
-
-  async loadMore() {
-    this.setState({ isLoading: true });
+  const loadMore = () => {
+    setIsLoading(true);
     setTimeout(() => {
-      this.setState(prev => {
-        return { page: prev.page + 1 };
-      });
+      setPage(page + 1);
     }, 200);
-  }
+  };
 
-  closeModal() {
-    this.setState({ modalIsHidden: true, modalImage: '' });
-    window.removeEventListener('keydown', this.handlePressEscape.bind(this));
-  }
+  const closeModal = () => {
+    setModalIsHidden(true);
+    setModalImage('');
+    window.removeEventListener('keydown', handlePressEscape);
+  };
 
-  handlePressEscape(e) {
-    return e.code === 'Escape' ? this.closeModal() : null;
-  }
+  const handlePressEscape = e => {
+    return e.code === 'Escape' ? closeModal() : null;
+  };
 
-  openModal(url) {
-    this.setState({ modalIsHidden: false, modalImage: url });
-    window.addEventListener('keydown', this.handlePressEscape.bind(this));
-  }
+  const openModal = url => {
+    setModalIsHidden(false);
+    setModalImage(url);
+    window.addEventListener('keydown', handlePressEscape);
+  };
 
-  async componentDidUpdate(_, prevState) {
-    if (prevState.query !== this.state.query) {
-      const response = await this.fetchData(this.state.query, this.state.page);
-      if (response.data.totalHits === 0) {
-        this.setState({ isLoading: false });
-        return Notify.failure(
-          `Sorry, there are no images matching your search query. Please try again.`
-        );
-      }
-      setTimeout(() => {
-        Notify.success(`Hooray! We found ${response.data.totalHits} images.`);
-        this.setState({
-          isLoading: false,
-          images: response.data.hits,
-          totalHits: response.data.totalHits,
-          showLoadMore: response.data.totalHits > perPage ? true : false,
-        });
-      }, 200);
-    }
-
-    if (prevState.page !== this.state.page && this.state.page !== 1) {
-      const newImages = (
-        await this.fetchData(this.state.query, this.state.page)
-      ).data.hits;
-      this.setState(prev => {
-        return {
-          images: [...prev.images, ...newImages],
-          isLoading: false,
-          showLoadMore: newImages.length < perPage ? false : true,
-        };
+  useEffect(() => {
+    const fetchData = async (query, page) => {
+      const response = await axios.get(`${BASE_URL}`, {
+        params: {
+          key: KEY,
+          q: query,
+          imageType: 'photo',
+          orientation: 'horizontal',
+          page: page,
+          per_page: perPage,
+        },
       });
-    }
-  }
 
-  render() {
-    return (
-      <>
-        <Searchbar handleSubmit={this.handleSubmit.bind(this)} />
-        {this.state.images.length > 0 && (
-          <ImageGallery
-            images={this.state.images}
-            openModal={this.openModal.bind(this)}
-          />
-        )}
-        {this.state.isLoading && <Loader />}
-        {this.state.showLoadMore && (
-          <LoadMoreButton loadMore={this.loadMore.bind(this)} />
-        )}
-        <Modal
-          closeModal={this.closeModal.bind(this)}
-          isHidden={this.state.modalIsHidden}
-          largeImageURL={this.state.modalImage}
-        />
-      </>
-    );
-  }
-}
+      if (query) {
+        if (page === 1) {
+          if (response.data.totalHits === 0) {
+            setIsLoading(false);
+            return Notify.failure(
+              `Sorry, there are no images matching your search query. Please try again.`
+            );
+          }
+          setTimeout(() => {
+            Notify.success(
+              `Hooray! We found ${response.data.totalHits} images.`
+            );
+            setIsLoading(false);
+            setImages(response.data.hits);
+            setShowLoadMore(response.data.totalHits > perPage ? true : false);
+          }, 200);
+        } else {
+          const newImages = response.data.hits;
+          setImages([...images, ...newImages]);
+          setIsLoading(false);
+          setShowLoadMore(newImages.length < perPage ? false : true);
+        }
+      }
+    };
+
+    fetchData(query, page);
+  }, [query, page]);
+
+  return (
+    <>
+      <Searchbar handleSubmit={handleSubmit} />
+      {images.length > 0 && (
+        <ImageGallery images={images} openModal={openModal} />
+      )}
+      {isLoading && <Loader />}
+      {showLoadMore && <LoadMoreButton loadMore={loadMore} />}
+      <Modal
+        closeModal={closeModal}
+        isHidden={modalIsHidden}
+        largeImageURL={modalImage}
+      />
+    </>
+  );
+};
