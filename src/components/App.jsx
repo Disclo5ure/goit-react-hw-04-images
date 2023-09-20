@@ -31,7 +31,7 @@ export const App = () => {
   const loadMore = () => {
     setIsLoading(true);
     setTimeout(() => {
-      setPage(page + 1);
+      setPage(prev => prev + 1);
     }, 200);
   };
 
