@@ -81,10 +81,9 @@ export const App = () => {
             setShowLoadMore(response.data.totalHits > perPage ? true : false);
           }, 200);
         } else {
-          const newImages = [...images, ...response.data.hits];
-          setImages(newImages);
+          setImages(prev => [...prev, ...response.data.hits]);
           setIsLoading(false);
-          setShowLoadMore(newImages.length < perPage ? false : true);
+          setShowLoadMore(images.length < perPage ? false : true);
         }
       }
     };
